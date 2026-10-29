@@ -3,377 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול משימות שוטפות - משותף</title>
-    <!-- Tailwind CSS -->
+    <title>ניהול משימות שוטפות</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter / Heebo -->
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Heebo', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        body { font-family: 'Heebo', sans-serif; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-gray-50 min-h-screen text-gray-800">
+    <div class="max-w-2xl mx-auto p-4 sm:p-6">
+        <header class="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-gray-100 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-1">ניהול משימות משותף</h1>
+                <p class="text-sm text-gray-500">עבודה שוטפת בענן</p>
+            </div>
+            <div id="connection-status" class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium">
+                מתחבר לענן...
+            </div>
+        </header>
 
-    <!-- Header -->
-    <header class="bg-indigo-700 text-white shadow-md">
-        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 p-2.5 rounded-xl shadow-inner border border-indigo-500">
-                    <i class="fa-solid fa-list-check text-2xl text-amber-300"></i>
-                </div>
+        <!-- טופס הוספת משימה -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">הוספת משימה חדשה</h2>
+            <form id="task-form" class="space-y-4">
                 <div>
-                    <h1 class="text-xl font-bold">ניהול משימות שוטפות</h1>
-                    <p class="text-xs text-indigo-200">מרחב עבודה משותף לעדכון ומעקב בזמן אמת</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">תוכן המשימה</label>
+                    <input type="text" id="task-title" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="למשל: עדכון דוח התקדמות שבועי...">
                 </div>
-            </div>
-            
-            <div class="flex items-center gap-3 bg-indigo-800/60 px-4 py-2 rounded-xl border border-indigo-600/40 text-sm">
-                <i class="fa-solid fa-user-shield text-indigo-300"></i>
-                <div class="flex flex-col">
-                    <span class="text-xs text-indigo-300">מזהה מחובר:</span>
-                    <span id="user-id-display" class="font-mono text-xs text-amber-300 truncate max-w-[180px]" title="מתחבר...">טעינת משתמש...</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">אחראי</label>
+                        <select id="task-assignee" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="אני">אני</option>
+                            <option value="המנהל">המנהל</option>
+                            <option value="שנונים יחד">שנונים יחד</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">עדיפות</label>
+                        <select id="task-priority" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="רגיל">רגיל</option>
+                            <option value="דחוף">דחוף 🚨</option>
+                        </select>
+                    </div>
                 </div>
-                <button onclick="copyUserId()" class="ml-1 bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-xs transition" title="העתק מזהה">
-                    <i class="fa-solid fa-copy"></i>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors shadow-sm">
+                    הוסף משימה לענן
                 </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
-
-        <!-- Notification Banner / Custom Alert Modal (hidden by default) -->
-        <div id="custom-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
-                <div class="flex items-center gap-3 text-indigo-600">
-                    <i class="fa-solid fa-circle-info text-2xl"></i>
-                    <h3 id="modal-title" class="font-bold text-lg text-slate-800">הודעת מערכת</h3>
-                </div>
-                <p id="modal-message" class="text-slate-600 text-sm leading-relaxed"></p>
-                <div class="flex justify-end mt-2">
-                    <button onclick="closeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-sm">אישור</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Task Form Card -->
-        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-            <h2 class="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-plus-circle text-indigo-600"></i> הוספת משימה חדשה
-            </h2>
-            <form id="task-form" onsubmit="handleAddTask(event)" class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div class="md:col-span-5">
-                    <label class="block text-xs font-medium text-slate-600 mb-1">כותרת המשימה / תיאור קצר</label>
-                    <input type="text" id="task-title" required placeholder="לדוגמה: הכנת דוח סטטוס שבועי..." 
-                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                </div>
-                
-                <div class="md:col-span-3">
-                    <label class="block text-xs font-medium text-slate-600 mb-1">אחראי לביצוע</label>
-                    <select id="task-assignee" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
-                        <option value="אני (מגיש הבקשה)">אני (מגיש הבקשה)</option>
-                        <option value="המנהל">המנהל</option>
-                        <option value="שנינו משותף">שנינו (משותף)</option>
-                    </select>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-medium text-slate-600 mb-1">עדיפות</label>
-                    <select id="task-priority" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
-                        <option value="רגיל">רגיל</option>
-                        <option value="דחוף" class="text-rose-600 font-medium">דחוף 🔥</option>
-                        <option value="נמוך">נמוך</option>
-                    </select>
-                </div>
-
-                <div class="md:col-span-2 flex items-end">
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-check"></i> הוסף
-                    </button>
-                </div>
             </form>
-        </section>
+        </div>
 
-        <!-- Filters & Search Toolbar -->
-        <section class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-            <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                <button onclick="setFilter('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white transition shadow-sm whitespace-nowrap">הכל</button>
-                <button onclick="setFilter('active')" id="filter-active" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">פתוחות</button>
-                <button onclick="setFilter('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">הושלמו</button>
+        <!-- רשימת משימות -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">רשימת משימות</h2>
+            <div id="tasks-list" class="space-y-3">
+                <div class="text-center py-8 text-gray-400">טוען משימות מהענן...</div>
             </div>
+        </div>
+    </div>
 
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-                <select id="filter-assignee" onchange="renderTasks()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="all">כל האחראים</option>
-                    <option value="אני (מגיש הבקשה)">אני (מגיש הבקשה)</option>
-                    <option value="המנהל">המנהל</option>
-                    <option value="שנינו משותף">שנינו (משותף)</option>
-                </select>
-                <span id="task-counter" class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 whitespace-nowrap">0 משימות</span>
-            </div>
-        </section>
-
-        <!-- Tasks List Container -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-            <div id="tasks-container" class="divide-y divide-slate-100">
-                <!-- Dynamic tasks will be inserted here -->
-                <div class="p-8 text-center text-slate-400 flex flex-col items-center gap-2">
-                    <i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-500"></i>
-                    <p class="text-sm">טוען משימות מהענן...</p>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="mt-auto py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
-        מערכת ניהול משימות משותפת • מחובר לענן בטוח
-    </footer>
-
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs וניהול הנתונים -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Global variables provided by environment or fallback
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'shared-task-manager-v1';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyDummyKeyForFallback",
-            authDomain: "dummy.firebaseapp.com",
-            projectId: "dummy-project",
-            storageBucket: "dummy.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzoMQP--v9Y5YodB1fFMqgVEFdNvETebs",
+            authDomain: "missions-4b9fb.firebaseapp.com",
+            projectId: "missions-4b9fb",
+            storageBucket: "missions-4b9fb.firebasestorage.app",
+            messagingSenderId: "972042110515",
+            appId: "1:972042110515:web:99da62d813112b3693c546",
+            measurementId: "G-7X36FDXMQ9"
         };
 
-        // Initialize Firebase
-        let app, db, auth;
-        let currentUser = null;
-        let tasksData = [];
-        let currentFilter = 'all';
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        // Expose functions to global window scope so HTML event handlers can reach them
-        window.showModal = function(title, message) {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-message').innerText = message;
-            document.getElementById('custom-modal').classList.remove('hidden');
-        }
+        const statusBadge = document.getElementById('connection-status');
+        statusBadge.textContent = "מחובר לענן ✅";
+        statusBadge.className = "text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium";
 
-        window.closeModal = function() {
-            document.getElementById('custom-modal').classList.add('hidden');
-        }
+        const tasksCollection = collection(db, "tasks");
 
-        window.copyUserId = function() {
-            if (!currentUser) return;
-            const textToCopy = currentUser.uid;
-            document.execCommand('copy'); // Fallback compatible
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(textToCopy);
+        // הוספת משימה
+        document.getElementById('task-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const title = document.getElementById('task-title').value;
+            const assignee = document.getElementById('task-assignee').value;
+            const priority = document.getElementById('task-priority').value;
+
+            try {
+                await addDoc(tasksCollection, {
+                    title: title,
+                    assignee: assignee,
+                    priority: priority,
+                    completed: false,
+                    createdAt: new Date()
+                });
+                document.getElementById('task-title').value = '';
+            } catch (error) {
+                console.error("שגיאה בהוספת משימה: ", error);
+                alert("אירעה שגיאה בשמירת המשימה.");
             }
-            window.showModal('הועתק בהצלחה!', 'מזהה המשתמש שלך הועתק ללוח. שלח אותו למנהל שלך כדי ששניכם תתחברו לאותו מרחב עבודה במידת הצורך.');
-        }
+        });
 
-        window.setFilter = function(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
-                btn.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
-            });
-            const activeBtn = document.getElementById(`filter-${filter}`);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
-                activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
-            }
-            renderTasks();
-        }
+        // האזנה לשינויים בזמן אמת מהענן
+        const q = query(tasksCollection);
+        onSnapshot(q, (snapshot) => {
+            const tasksList = document.getElementById('tasks-list');
+            tasksList.innerHTML = '';
 
-        window.handleAddTask = async function(event) {
-            event.preventDefault();
-            if (!currentUser) {
-                window.showModal('שגיאת חיבור', 'עדיין לא הושלם חיבור מאובטח לענן. אנא המתן רגע.');
+            if (snapshot.empty) {
+                tasksList.innerHTML = '<div class="text-center py-8 text-gray-400">אין משימות כרגע. אפשר להתחיל להוסיף למעלה!</div>';
                 return;
             }
 
-            const titleInput = document.getElementById('task-title');
-            const assigneeInput = document.getElementById('task-assignee');
-            const priorityInput = document.getElementById('task-priority');
+            snapshot.forEach((docSnapshot) => {
+                const task = docSnapshot.data();
+                const taskId = docSnapshot.id;
 
-            const newTask = {
-                title: titleInput.value.trim(),
-                assignee: assigneeInput.value,
-                priority: priorityInput.value,
-                completed: false,
-                createdAt: Date.now(),
-                createdBy: currentUser.uid
-            };
-
-            try {
-                // Mandatory Rule 1: Use public shared collection path so both user and manager see same tasks
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
-                await addDoc(colRef, newTask);
-                titleInput.value = '';
-            } catch (err) {
-                console.error("Error adding task:", err);
-                window.showModal('שגיאה', 'לא ניתן להוסיף את המשימה כעת. נסה שוב.');
-            }
-        }
-
-        window.toggleTaskStatus = async function(taskId, currentStatus) {
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId);
-                await updateDoc(docRef, { completed: !currentStatus });
-            } catch (err) {
-                console.error("Error updating task:", err);
-                window.showModal('שגיאה', 'לא ניתן לעדכן את סטטוס המשימה.');
-            }
-        }
-
-        window.deleteTask = async function(taskId) {
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId);
-                await deleteDoc(docRef);
-            } catch (err) {
-                console.error("Error deleting task:", err);
-                window.showModal('שגיאה', 'לא ניתן למחוק את המשימה.');
-            }
-        }
-
-        window.renderTasks = function() {
-            const container = document.getElementById('tasks-container');
-            const assigneeFilter = document.getElementById('filter-assignee').value;
-
-            // Filter in memory (Mandatory Rule 2: No complex queries)
-            let filtered = tasksData.filter(task => {
-                if (currentFilter === 'active' && task.completed) return false;
-                if (currentFilter === 'completed' && !task.completed) return false;
-                if (assigneeFilter !== 'all' && task.assignee !== assigneeFilter) return false;
-                return true;
-            });
-
-            // Sort by creation date descending (newest first)
-            filtered.sort((a, b) => b.createdAt - a.createdAt);
-
-            document.getElementById('task-counter').innerText = `${filtered.length} משימות מוצגות`;
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
-                        <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
-                        <p class="text-sm">אין משימות להצגה כרגע.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = filtered.map(task => {
-                const isCompleted = task.completed;
-                const isUrgent = task.priority === 'דחוף';
+                const taskCard = document.createElement('div');
+                taskCard.className = `flex items-center justify-between p-4 border rounded-xl transition-all ${task.completed ? 'bg-gray-100 border-gray-200 opacity-60 line-through' : 'bg-gray-50 border-gray-200'}`;
                 
-                return `
-                    <div class="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition ${isCompleted ? 'bg-slate-50/50 opacity-75' : ''}">
-                        <div class="flex items-start sm:items-center gap-3 w-full sm:w-auto">
-                            <input type="checkbox" ${isCompleted ? 'checked' : ''} 
-                                onclick="toggleTaskStatus('${task.id}', ${isCompleted})"
-                                class="mt-1 sm:mt-0 w-5 h-5 accent-indigo-600 rounded cursor-pointer">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}">
-                                    ${escapeHtml(task.title)}
-                                </span>
-                                <div class="flex flex-wrap items-center gap-2 text-xs">
-                                    <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium border border-slate-200">
-                                        <i class="fa-solid fa-user text-slate-400 ml-1"></i> ${escapeHtml(task.assignee)}
-                                    </span>
-                                    <span class="px-2 py-0.5 rounded-md font-medium ${isUrgent ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                                        ${isUrgent ? '<i class="fa-solid fa-fire text-rose-500 ml-1"></i>' : ''}עדיפות: ${task.priority}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                // יצירת הודעת וואצאפ מוכנה מראש
+                const whatsappMsg = encodeURIComponent(`הי, לגבי המשימה: "${task.title}" (אחראי: ${task.assignee}, עדיפות: ${task.priority})`);
 
-                        <div class="flex items-center gap-2 self-end sm:self-center">
-                            <button onclick="deleteTask('${task.id}')" class="text-slate-400 hover:text-rose-600 p-2 rounded-lg transition" title="מחק משימה">
-                                <i class="fa-solid fa-trash-can text-sm"></i>
-                            </button>
+                taskCard.innerHTML = `
+                    <div class="flex items-center gap-3 flex-grow">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTask('${taskId}', ${!task.completed})" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <div class="flex-grow">
+                            <p class="font-medium text-gray-800">${task.title}</p>
+                            <span class="text-xs text-gray-500">אחראי: ${task.assignee} | עדיפות: ${task.priority}</span>
                         </div>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <a href="https://wa.me/?text=${whatsappMsg}" target="_blank" class="text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 p-2 rounded-lg text-xs font-medium transition-colors" title="שלח בוואצאפ">
+                            📱 וואצאפ
+                        </a>
+                        <button onclick="deleteTask('${taskId}')" class="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1">מחק</button>
+                    </div>
                 `;
-            }).join('');
+                tasksList.appendChild(taskCard);
+            });
+        });
+
+        // פונקציות גלובליות למחיקה ועדכון סטטוס
+        window.toggleTask = async function(id, completed) {
+            const taskRef = doc(db, "tasks", id);
+            await updateDoc(taskRef, { completed: completed });
         }
 
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        // Initialize Firebase & Auth on load
-        async function initApp() {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Mandatory Rule 3: Auth before queries
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUser = user;
-                        document.getElementById('user-id-display').innerText = user.uid;
-                        startListeningTasks();
-                    } else {
-                        document.getElementById('user-id-display').innerText = 'לא מזוהה';
-                    }
-                });
-
-            } catch (err) {
-                console.error("Firebase initialization error:", err);
-                window.showModal('שגיאת חיבור לענן', 'אירעה שגיאה בחיבור לשירותי הענן. ודא חיבור תקין.');
-                document.getElementById('tasks-container').innerHTML = `
-                    <div class="p-8 text-center text-rose-500 text-sm">שגיאה באתחול חיבור לענן.</div>
-                `;
+        window.deleteTask = async function(id) {
+            if (confirm("האם למחוק את המשימה?")) {
+                const taskRef = doc(db, "tasks", id);
+                await deleteDoc(taskRef);
             }
         }
-
-        function startListeningTasks() {
-            if (!currentUser) return;
-            // Mandatory Rule 1: Public shared collection path
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
-            
-            // Mandatory Rule 2: Simple query without compound index requirements
-            onSnapshot(colRef, (snapshot) => {
-                tasksData = [];
-                snapshot.forEach((docSnap) => {
-                    tasksData.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderTasks();
-            }, (error) => {
-                console.error("Firestore snapshot error:", error);
-                window.showModal('שגיאת סנכרון', 'לא ניתן לקבל עדכונים מהענן כרגע.');
-            });
-        }
-
-        window.onload = initApp;
     </script>
 </body>
 </html>
