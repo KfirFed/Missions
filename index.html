@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול משימות שוטפות - משותף</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter / Heebo -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Heebo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Heebo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white shadow-md">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2.5 rounded-xl shadow-inner border border-indigo-500">
+                    <i class="fa-solid fa-list-check text-2xl text-amber-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">ניהול משימות שוטפות</h1>
+                    <p class="text-xs text-indigo-200">מרחב עבודה משותף לעדכון ומעקב בזמן אמת</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-indigo-800/60 px-4 py-2 rounded-xl border border-indigo-600/40 text-sm">
+                <i class="fa-solid fa-user-shield text-indigo-300"></i>
+                <div class="flex flex-col">
+                    <span class="text-xs text-indigo-300">מזהה מחובר:</span>
+                    <span id="user-id-display" class="font-mono text-xs text-amber-300 truncate max-w-[180px]" title="מתחבר...">טעינת משתמש...</span>
+                </div>
+                <button onclick="copyUserId()" class="ml-1 bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-xs transition" title="העתק מזהה">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+
+        <!-- Notification Banner / Custom Alert Modal (hidden by default) -->
+        <div id="custom-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
+                <div class="flex items-center gap-3 text-indigo-600">
+                    <i class="fa-solid fa-circle-info text-2xl"></i>
+                    <h3 id="modal-title" class="font-bold text-lg text-slate-800">הודעת מערכת</h3>
+                </div>
+                <p id="modal-message" class="text-slate-600 text-sm leading-relaxed"></p>
+                <div class="flex justify-end mt-2">
+                    <button onclick="closeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition shadow-sm">אישור</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Task Form Card -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <h2 class="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-plus-circle text-indigo-600"></i> הוספת משימה חדשה
+            </h2>
+            <form id="task-form" onsubmit="handleAddTask(event)" class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div class="md:col-span-5">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">כותרת המשימה / תיאור קצר</label>
+                    <input type="text" id="task-title" required placeholder="לדוגמה: הכנת דוח סטטוס שבועי..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                </div>
+                
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">אחראי לביצוע</label>
+                    <select id="task-assignee" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
+                        <option value="אני (מגיש הבקשה)">אני (מגיש הבקשה)</option>
+                        <option value="המנהל">המנהל</option>
+                        <option value="שנינו משותף">שנינו (משותף)</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">עדיפות</label>
+                    <select id="task-priority" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
+                        <option value="רגיל">רגיל</option>
+                        <option value="דחוף" class="text-rose-600 font-medium">דחוף 🔥</option>
+                        <option value="נמוך">נמוך</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2 flex items-end">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i> הוסף
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Filters & Search Toolbar -->
+        <section class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <button onclick="setFilter('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white transition shadow-sm whitespace-nowrap">הכל</button>
+                <button onclick="setFilter('active')" id="filter-active" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">פתוחות</button>
+                <button onclick="setFilter('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-xl text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">הושלמו</button>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <select id="filter-assignee" onchange="renderTasks()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">כל האחראים</option>
+                    <option value="אני (מגיש הבקשה)">אני (מגיש הבקשה)</option>
+                    <option value="המנהל">המנהל</option>
+                    <option value="שנינו משותף">שנינו (משותף)</option>
+                </select>
+                <span id="task-counter" class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 whitespace-nowrap">0 משימות</span>
+            </div>
+        </section>
+
+        <!-- Tasks List Container -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div id="tasks-container" class="divide-y divide-slate-100">
+                <!-- Dynamic tasks will be inserted here -->
+                <div class="p-8 text-center text-slate-400 flex flex-col items-center gap-2">
+                    <i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-500"></i>
+                    <p class="text-sm">טוען משימות מהענן...</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+        מערכת ניהול משימות משותפת • מחובר לענן בטוח
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by environment or fallback
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'shared-task-manager-v1';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDummyKeyForFallback",
+            authDomain: "dummy.firebaseapp.com",
+            projectId: "dummy-project",
+            storageBucket: "dummy.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        // Initialize Firebase
+        let app, db, auth;
+        let currentUser = null;
+        let tasksData = [];
+        let currentFilter = 'all';
+
+        // Expose functions to global window scope so HTML event handlers can reach them
+        window.showModal = function(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        window.copyUserId = function() {
+            if (!currentUser) return;
+            const textToCopy = currentUser.uid;
+            document.execCommand('copy'); // Fallback compatible
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy);
+            }
+            window.showModal('הועתק בהצלחה!', 'מזהה המשתמש שלך הועתק ללוח. שלח אותו למנהל שלך כדי ששניכם תתחברו לאותו מרחב עבודה במידת הצורך.');
+        }
+
+        window.setFilter = function(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                btn.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+            });
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+                activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+            }
+            renderTasks();
+        }
+
+        window.handleAddTask = async function(event) {
+            event.preventDefault();
+            if (!currentUser) {
+                window.showModal('שגיאת חיבור', 'עדיין לא הושלם חיבור מאובטח לענן. אנא המתן רגע.');
+                return;
+            }
+
+            const titleInput = document.getElementById('task-title');
+            const assigneeInput = document.getElementById('task-assignee');
+            const priorityInput = document.getElementById('task-priority');
+
+            const newTask = {
+                title: titleInput.value.trim(),
+                assignee: assigneeInput.value,
+                priority: priorityInput.value,
+                completed: false,
+                createdAt: Date.now(),
+                createdBy: currentUser.uid
+            };
+
+            try {
+                // Mandatory Rule 1: Use public shared collection path so both user and manager see same tasks
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
+                await addDoc(colRef, newTask);
+                titleInput.value = '';
+            } catch (err) {
+                console.error("Error adding task:", err);
+                window.showModal('שגיאה', 'לא ניתן להוסיף את המשימה כעת. נסה שוב.');
+            }
+        }
+
+        window.toggleTaskStatus = async function(taskId, currentStatus) {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId);
+                await updateDoc(docRef, { completed: !currentStatus });
+            } catch (err) {
+                console.error("Error updating task:", err);
+                window.showModal('שגיאה', 'לא ניתן לעדכן את סטטוס המשימה.');
+            }
+        }
+
+        window.deleteTask = async function(taskId) {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId);
+                await deleteDoc(docRef);
+            } catch (err) {
+                console.error("Error deleting task:", err);
+                window.showModal('שגיאה', 'לא ניתן למחוק את המשימה.');
+            }
+        }
+
+        window.renderTasks = function() {
+            const container = document.getElementById('tasks-container');
+            const assigneeFilter = document.getElementById('filter-assignee').value;
+
+            // Filter in memory (Mandatory Rule 2: No complex queries)
+            let filtered = tasksData.filter(task => {
+                if (currentFilter === 'active' && task.completed) return false;
+                if (currentFilter === 'completed' && !task.completed) return false;
+                if (assigneeFilter !== 'all' && task.assignee !== assigneeFilter) return false;
+                return true;
+            });
+
+            // Sort by creation date descending (newest first)
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+
+            document.getElementById('task-counter').innerText = `${filtered.length} משימות מוצגות`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
+                        <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
+                        <p class="text-sm">אין משימות להצגה כרגע.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(task => {
+                const isCompleted = task.completed;
+                const isUrgent = task.priority === 'דחוף';
+                
+                return `
+                    <div class="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition ${isCompleted ? 'bg-slate-50/50 opacity-75' : ''}">
+                        <div class="flex items-start sm:items-center gap-3 w-full sm:w-auto">
+                            <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                                onclick="toggleTaskStatus('${task.id}', ${isCompleted})"
+                                class="mt-1 sm:mt-0 w-5 h-5 accent-indigo-600 rounded cursor-pointer">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-sm font-medium ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}">
+                                    ${escapeHtml(task.title)}
+                                </span>
+                                <div class="flex flex-wrap items-center gap-2 text-xs">
+                                    <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium border border-slate-200">
+                                        <i class="fa-solid fa-user text-slate-400 ml-1"></i> ${escapeHtml(task.assignee)}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded-md font-medium ${isUrgent ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                        ${isUrgent ? '<i class="fa-solid fa-fire text-rose-500 ml-1"></i>' : ''}עדיפות: ${task.priority}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 self-end sm:self-center">
+                            <button onclick="deleteTask('${task.id}')" class="text-slate-400 hover:text-rose-600 p-2 rounded-lg transition" title="מחק משימה">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Initialize Firebase & Auth on load
+        async function initApp() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Mandatory Rule 3: Auth before queries
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        document.getElementById('user-id-display').innerText = user.uid;
+                        startListeningTasks();
+                    } else {
+                        document.getElementById('user-id-display').innerText = 'לא מזוהה';
+                    }
+                });
+
+            } catch (err) {
+                console.error("Firebase initialization error:", err);
+                window.showModal('שגיאת חיבור לענן', 'אירעה שגיאה בחיבור לשירותי הענן. ודא חיבור תקין.');
+                document.getElementById('tasks-container').innerHTML = `
+                    <div class="p-8 text-center text-rose-500 text-sm">שגיאה באתחול חיבור לענן.</div>
+                `;
+            }
+        }
+
+        function startListeningTasks() {
+            if (!currentUser) return;
+            // Mandatory Rule 1: Public shared collection path
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
+            
+            // Mandatory Rule 2: Simple query without compound index requirements
+            onSnapshot(colRef, (snapshot) => {
+                tasksData = [];
+                snapshot.forEach((docSnap) => {
+                    tasksData.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderTasks();
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
+                window.showModal('שגיאת סנכרון', 'לא ניתן לקבל עדכונים מהענן כרגע.');
+            });
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
