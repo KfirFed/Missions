@@ -56,7 +56,6 @@
                         <option value="הכל">הכל</option>
                         <option value="כפיר">כפיר</option>
                         <option value="מילר">מילר</option>
-                        <option value="שנינו">שנינו</option>
                     </select>
                 </div>
             </div>
@@ -75,7 +74,6 @@
                         <option value="הכל">הכל</option>
                         <option value="כפיר">כפיר</option>
                         <option value="מילר">מילר</option>
-                        <option value="שנינו">שנינו</option>
                     </select>
                 </div>
             </div>
@@ -158,9 +156,15 @@
             const siteUrl = window.location.href;
 
             allTasks.forEach(task => {
-                // סינון לפי אחראי
-                const matchesActiveFilter = (activeFilter === 'הכל' || task.assignee === activeFilter);
-                const matchesCompletedFilter = (completedFilter === 'הכל' || task.assignee === completedFilter);
+                // לוגיקת סינון מתקדמת: אם נבחר כפיר, מציג כפיר או שנינו. אותו דבר למילר.
+                const matchesFilter = (filterVal, taskAssignee) => {
+                    if (filterVal === 'הכל') return true;
+                    if (taskAssignee === 'שנינו') return true;
+                    return taskAssignee === filterVal;
+                };
+
+                const matchesActiveFilter = matchesFilter(activeFilter, task.assignee);
+                const matchesCompletedFilter = matchesFilter(completedFilter, task.assignee);
 
                 if (task.completed && !matchesCompletedFilter) return;
                 if (!task.completed && !matchesActiveFilter) return;
@@ -168,7 +172,6 @@
                 const taskCard = document.createElement('div');
                 taskCard.className = `flex items-center justify-between p-4 border rounded-xl transition-all ${task.completed ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-white border-gray-200 shadow-sm'}`;
                 
-                // יצירת הודעת וואצאפ למספר המבוקש עם קישור לאתר
                 const whatsappText = encodeURIComponent(`מקפיץ לך את המשימה ${task.title}\nקישור לאתר: ${siteUrl}`);
                 const whatsappUrl = `https://wa.me/972504244336?text=${whatsappText}`;
 
@@ -184,6 +187,7 @@
                         <a href="${whatsappUrl}" target="_blank" class="text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1" title="שלח וואצאפ">
                             📱 <span class="hidden sm:inline">וואצאפ</span>
                         </a>
+                        <button onclick="editTask('${task.id}', '${escapeHtml(task.title)}', '${task.assignee}', '${task.priority}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium px-2 py-1">ערוך</button>
                         <button onclick="deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 text-sm font-medium px-2 py-1">מחק</button>
                     </div>
                 `;
@@ -205,10 +209,44 @@
             }
         }
 
-        // פונקציות גלובליות למחיקה ועדכון סטטוס
+        // פונקציית עזר לניקוי מחרוזות בעריכה
+        function escapeHtml(str) {
+            return str.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+        }
+
+        // פונקציות גלובליות לעריכה, מחיקה ועדכון סטטוס
         window.toggleTask = async function(id, completed) {
             const taskRef = doc(db, "tasks", id);
             await updateDoc(taskRef, { completed: completed });
+        }
+
+        window.editTask = async function(id, currentTitle, currentAssignee, currentPriority) {
+            const newTitle = prompt("ערוך את שם המשימה:", currentTitle);
+            if (newTitle === null) return; // בוטל
+
+            const newAssignee = prompt("בחר אחראי חדש (כפיר, מילר, שנינו):", currentAssignee);
+            if (!['כפיר', 'מילר', 'שנינו'].includes(newAssignee)) {
+                if (newAssignee !== null) alert("אחראי לא חוקי. יש לבחור: כפיר, מילר או שנינו.");
+                return;
+            }
+
+            const newPriority = prompt("בחר עדיפות חדשה (רגיל, דחוף):", currentPriority);
+            if (!['רגיל', 'דחוף'].includes(newPriority)) {
+                if (newPriority !== null) alert("עדיפות לא חוקית. יש לבחור: רגיל או דחוף.");
+                return;
+            }
+
+            try {
+                const taskRef = doc(db, "tasks", id);
+                await updateDoc(taskRef, {
+                    title: newTitle,
+                    assignee: newAssignee,
+                    priority: newPriority
+                });
+            } catch (error) {
+                console.error("שגיאה בעדכון משימה: ", error);
+                alert("אירעה שגיאה בעדכון המשימה.");
+            }
         }
 
         window.deleteTask = async function(id) {
