@@ -144,11 +144,10 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs ולוגיקת הבוט מבוסס ה-AI -->
+    <!-- Firebase SDKs ולוגיקת הבוט הישירה -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { GoogleGenerativeAI } from "https://esm.run/@google/genai";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCzoMQP--v9Y5YodB1fFMqgVEFdNvETebs",
@@ -202,7 +201,7 @@
             });
         }
 
-        // חיבור אמיתי וחכם ל-Gemini שמתרגם את הבקשה שלך לפעולות במערכת
+        // תקשורת ישירה מול ה-API של Gemini ללא תלות בספריות צד שלישי
         window.sendChatCommand = async function() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -214,11 +213,9 @@
             const typingId = appendMessage("חושב...", 'bot');
 
             try {
-                // יצירת רשימת המשימות הפתוחות הנוכחיות כדי שה-AI ידע מה קיים
                 const activeTasksSummary = allTasks.filter(t => !t.completed).map(t => `- ID: ${t.id}, כותרת: "${t.title}", אחראי: ${t.assignee}`).join('\n');
-
-                const apiKey = "AIzaSyCzoMQP--v9Y5YodB1fFMqgVEFdNvETebs"; // מפתח ה-API שלך
-                const ai = new GoogleGenerativeAI({ apiKey });
+                const apiKey = "AIzaSyCzoMQP--v9Y5YodB1fFMqgVEFdNvETebs";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
                 const prompt = `אתה עוזר ניהול משימות חכם המחובר למערכת של כפיר ומילר.
 רשימת המשימות הפתוחות כרגע:
@@ -226,28 +223,30 @@ ${activeTasksSummary}
 
 המשתמש כתב לך את ההודעה הבאה: "${text}"
 
-נתח את ההודעה ובצע פעולות נדרשות. עליך להחזיר JSON תקין בלבד (ללא טקסט נוסף סביבו) במבנה הבא:
+נתח את ההודעה ובצע פעולות נדרשות. עליך להחזיר JSON תקין בלבד (ללא מעטפות markdown כמו \`\`\`json וללא שום טקסט נוסף סביבו) במבנה הבא:
 {
   "actions": [
     { "type": "add", "title": "...", "assignee": "כפיר/מילר/שנינו", "priority": "רגיל/דחוף" },
-    { "type": "complete", "id": "...", "titleMatch": "..." },
+    { "type": "complete", "id": "..." },
     { "type": "delete", "id": "..." }
   ],
   "reply": "הודעה קצרה וכיפית בעברית למשתמש על מה שבוצע"
 }
-אם צריך לסמן משימה כבוצעה, מצא את ה-ID המתאים ביותר מתוך הרשימה למעלה לפי תוכן ההודעה. אפשר לבצע כמה פעולות במקביל (למשל גם להוסיף וגם לסמן).`;
+אם צריך לסמן משימה כבוצעה, מצא את ה-ID המתאים ביותר מתוך הרשימה למעלה לפי תוכן ההודעה. אפשר לבצע כמה פעולות במקביל.`;
 
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: prompt
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
                 });
 
-                let rawResponse = response.text.trim();
-                // ניקוי מעטפות Markdown אם ישנן
+                const data = await response.json();
+                let rawResponse = data.candidates[0].content.parts[0].text.trim();
                 rawResponse = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(rawResponse);
 
-                // ביצוע הפעולות בפועל מול ה-Firebase
                 for (const action of result.actions) {
                     if (action.type === 'add') {
                         await addNewTask(action.title, action.assignee || 'שנינו', action.priority || 'רגיל');
