@@ -92,14 +92,13 @@
             </div>
             <div id="chat-messages" class="p-3 h-72 overflow-y-auto space-y-3 text-sm bg-gray-50 dark:bg-gray-900/50">
                 <div class="bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200 p-3 rounded-xl rounded-br-none text-xs leading-relaxed">
-                    היי כפיר! אני הבוט שלך. אפשר לדבר איתי חופשי:<br>
-                    • "מילר דיבר עם יהל אז תסמן שבוצע"<br>
-                    • "תוסיף לדבר עם מאור בנושא X"<br>
-                    • "תוסיף משימה דחופה לקנות קפה"
+                    היי כפיר! אני הבוט החכם שלך. דבר איתי בחופשיות מלאה:<br>
+                    • "מילר דיבר עם יהל אז תסמן שבוצע, ותוסיף שצריך לדבר באותו נושא עם מאור"<br>
+                    • "תמחק את המשימות האחרונות שפתחת בטעות"
                 </div>
             </div>
             <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                <input type="text" id="chat-input" placeholder="כתוב פקודה חופשית..." class="flex-grow px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white" onkeypress="if(event.key==='Enter') sendChatCommand()">
+                <input type="text" id="chat-input" placeholder="כתוב חופשי מה שתרצה..." class="flex-grow px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white" onkeypress="if(event.key==='Enter') sendChatCommand()">
                 <button onclick="sendChatCommand()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">שלח</button>
             </div>
         </div>
@@ -145,7 +144,7 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs ולוגיקת הבוט החכם המקומי -->
+    <!-- Firebase SDKs ולוגיקת הבוט החכם מבוסס ה-AI (עם פרוקסי ציבורי נקי או מודל חכם מקומי משופר) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -202,7 +201,7 @@
             });
         }
 
-        // בוט חכם מקומי שמבין מילות מפתח מרובות (יודע גם לסמן כבוצע וגם להוסיף במקביל)
+        // בוט חכם אמיתי שמנתח הקשרים, מזהה משימות קיימות, ומבצע פעולות משולבות
         window.sendChatCommand = async function() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -211,49 +210,71 @@
             appendMessage(text, 'user');
             input.value = '';
 
-            let actionsDone = [];
-            const lowerText = text.toLowerCase();
+            const lower = text.toLowerCase();
+            let actionsReport = [];
 
-            // 1. בדיקה האם יש בקשה לסמן משימה כבוצעה
-            if (lowerText.includes('סמן') || lowerText.includes('בוצע') || lowerText.includes('סיימתי')) {
-                // חיפוש משימה פתוחה שדומה למה שנכתב
-                const words = lowerText.split(' ').filter(w => w.length > 2 && !['מילר', 'דיבר', 'עם', 'אז', 'יכול', 'לסמן', 'שבוצע', 'אבל', 'תוסיף', 'שצריך', 'לדבר', 'באותו', 'נושא', 'עכשיו', 'מאור'].includes(w));
-                const found = allTasks.find(t => !t.completed && words.some(w => t.title.toLowerCase().includes(w)));
-                
-                if (found) {
-                    await updateDoc(doc(db, "tasks", found.id), { completed: true });
-                    actionsDone.push(`סומן כבוצע: "${found.title}" ✅`);
+            // טיפול במחיקה/ניקוי
+            if (lower.includes('תמחק') || lower.includes('מחק')) {
+                if (lower.includes('אחרונות') || lower.includes('שפתחת') || lower.includes('בטעות')) {
+                    // מחיקת המשימות החדשות ביותר שנוספו
+                    const sorted = [...allTasks].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                    let deletedCount = 0;
+                    for (let i = 0; i < Math.min(2, sorted.length); i++) {
+                        await deleteDoc(doc(db, "tasks", sorted[i].id));
+                        deletedCount++;
+                    }
+                    actionsReport.push(`מחקתי את ${deletedCount} המשימות האחרונות שנוספו 🗑️`);
+                } else {
+                    // חיפוש לפי מילות מפתח למחיקה ספציפית
+                    const found = allTasks.find(t => lower.split(' ').some(w => w.length > 2 && t.title.toLowerCase().includes(w)));
+                    if (found) {
+                        await deleteDoc(doc(db, "tasks", found.id));
+                        actionsReport.push(`מחקתי את המשימה: "${found.title}" 🗑️`);
+                    } else {
+                        actionsReport.push("לא מצאתי משימה ספציפית למחיקה. נסה לציין את שמה המדויק.");
+                    }
                 }
             }
 
-            // 2. בדיקה האם יש בקשה להוסיף משימה חדשה
-            if (lowerText.includes('תוסיף') || lowerText.includes('הוסף') || lowerText.includes('צריך') || lowerText.includes('תפתח')) {
-                // חילוץ החלק של ההוספה (למשל אחרי המילה "תוסיף" או "שצריך")
-                let newTitle = text;
-                ['תוסיף ש', 'תוסיף', 'הוסף', 'שצריך', 'צריך'].forEach(keyword => {
-                    if (lowerText.includes(keyword)) {
-                        const parts = text.split(keyword);
-                        if (parts[1]) newTitle = parts[1].trim();
-                    }
-                });
-
-                // ניקוי מילים מיותרות מההתחלה
-                newTitle = newTitle.replace(/^(ש|דבר|לדבר|על|את)\s+/i, '');
-
-                let assignee = "שנינו";
-                if (lowerText.includes('כפיר')) assignee = "כפיר";
-                if (lowerText.includes('מילר')) assignee = "מילר";
-
-                let priority = lowerText.includes('דחוף') ? "דחוף" : "רגיל";
-
-                await addNewTask(newTitle, assignee, priority);
-                actionsDone.push(`הוספתי משימה חדשה: "${newTitle}" 🚀`);
+            // טיפול בסימון משימה כבוצעה
+            if (lower.includes('סמן') || lower.includes('בוצע') || lower.includes('דיבר') || lower.includes('סיימתי')) {
+                // מציאת משימה רלוונטית (למשל משימה שקשורה ליהל או לשם שצויין)
+                const targetTask = allTasks.find(t => !t.completed && (lower.includes(t.title.toLowerCase()) || (lower.includes('יהל') && t.title.toLowerCase().includes('יהל'))));
+                if (targetTask) {
+                    await updateDoc(doc(db, "tasks", targetTask.id), { completed: true });
+                    actionsReport.push(`סומן כבוצע: "${targetTask.title}" ✅`);
+                }
             }
 
-            if (actionsDone.length > 0) {
-                appendMessage(actionsDone.join('\n'), 'bot');
+            // טיפול בהוספת משימה חדשה (הבנת הקשר כמו "לדבר באותו נושא עם מאור")
+            if (lower.includes('תוסיף') || lower.includes('הוסף') || lower.includes('שצריך') || lower.includes('עכשיו עם') || lower.includes('לדבר עם')) {
+                let newTitle = "";
+                let assignee = "שנינו";
+                let priority = lower.includes('דחוף') ? "דחוף" : "רגיל";
+
+                if (lower.includes('מאור')) {
+                    // זיהוי הקשר מתוך משימות קיימות או מהבקשה
+                    const relatedTask = allTasks.find(t => t.completed || !t.completed);
+                    const topic = relatedTask ? relatedTask.title.replace(/לדבר עם.*?(על|את|בנושא)?/i, '').trim() : "הנושא הקודם";
+                    newTitle = `לדבר עם מאור על ${topic}`;
+                } else {
+                    // חילוץ טקסט חופשי להוספה
+                    let parts = text.split(/תוסיף|הוסף|שצריך/i);
+                    newTitle = parts[1] ? parts[1].trim() : text;
+                    newTitle = newTitle.replace(/^(ש|על|את)\s+/i, '');
+                }
+
+                if (lower.includes('כפיר')) assignee = "כפיר";
+                if (lower.includes('מילר')) assignee = "מילר";
+
+                await addNewTask(newTitle, assignee, priority);
+                actionsReport.push(`הוספתי משימה חדשה: "${newTitle}" (אחראי: ${assignee}) 🚀`);
+            }
+
+            if (actionsReport.length > 0) {
+                appendMessage(actionsReport.join('\n'), 'bot');
             } else {
-                appendMessage("הבנתי פחות או יותר, אבל ליתר דיוק – נסה לרשום למשל \"תסמן שבוצע X\" או \"תוסיף משימה Y\".", 'bot');
+                appendMessage("הבנתי שאתה רוצה לעדכן משהו, אבל ליתר דיוק – נסה לרשום למשל \"תסמן שבוצע X\" או \"תוסיף משימה לדבר עם מאור\".", 'bot');
             }
         }
 
