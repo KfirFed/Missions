@@ -83,6 +83,45 @@
         </div>
     </div>
 
+    <!-- פופאפ (Modal) עריכת משימה -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-100">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">עריכת משימה</h3>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-task-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">תוכן המשימה</label>
+                    <input type="text" id="edit-task-title" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">אחראי</label>
+                        <select id="edit-task-assignee" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="כפיר">כפיר</option>
+                            <option value="מילר">מילר</option>
+                            <option value="שנינו">שנינו</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">עדיפות</label>
+                        <select id="edit-task-priority" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="רגיל">רגיל</option>
+                            <option value="דחוף">דחוף 🚨</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors shadow-sm">
+                        שמור שינויים
+                    </button>
+                    <button type="button" onclick="closeEditModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors">
+                        ביטול
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase SDKs וניהול הנתונים -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -126,6 +165,28 @@
             }
         });
 
+        // שמירת שינויים מטופס העריכה (בפופאפ)
+        document.getElementById('edit-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-task-id').value;
+            const title = document.getElementById('edit-task-title').value;
+            const assignee = document.getElementById('edit-task-assignee').value;
+            const priority = document.getElementById('edit-task-priority').value;
+
+            try {
+                const taskRef = doc(db, "tasks", id);
+                await updateDoc(taskRef, {
+                    title: title,
+                    assignee: assignee,
+                    priority: priority
+                });
+                closeEditModal();
+            } catch (error) {
+                console.error("שגיאה בעדכון משימה: ", error);
+                alert("אירעה שגיאה בעדכון המשימה.");
+            }
+        });
+
         // האזנה לשינויים בזמן אמת מהענן
         const q = query(tasksCollection);
         onSnapshot(q, (snapshot) => {
@@ -156,7 +217,6 @@
             const siteUrl = window.location.href;
 
             allTasks.forEach(task => {
-                // לוגיקת סינון מתקדמת: אם נבחר כפיר, מציג כפיר או שנינו. אותו דבר למילר.
                 const matchesFilter = (filterVal, taskAssignee) => {
                     if (filterVal === 'הכל') return true;
                     if (taskAssignee === 'שנינו') return true;
@@ -187,7 +247,7 @@
                         <a href="${whatsappUrl}" target="_blank" class="text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1" title="שלח וואצאפ">
                             📱 <span class="hidden sm:inline">וואצאפ</span>
                         </a>
-                        <button onclick="editTask('${task.id}', '${escapeHtml(task.title)}', '${task.assignee}', '${task.priority}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium px-2 py-1">ערוך</button>
+                        <button onclick="openEditModal('${task.id}', '${escapeHtml(task.title)}', '${task.assignee}', '${task.priority}')" class="text-blue-500 hover:text-blue-700 text-sm font-medium px-2 py-1">ערוך</button>
                         <button onclick="deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 text-sm font-medium px-2 py-1">מחק</button>
                     </div>
                 `;
@@ -209,44 +269,26 @@
             }
         }
 
-        // פונקציית עזר לניקוי מחרוזות בעריכה
         function escapeHtml(str) {
             return str.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
         }
 
-        // פונקציות גלובליות לעריכה, מחיקה ועדכון סטטוס
+        // ניהול פופאפ עריכה
+        window.openEditModal = function(id, title, assignee, priority) {
+            document.getElementById('edit-task-id').value = id;
+            document.getElementById('edit-task-title').value = title;
+            document.getElementById('edit-task-assignee').value = assignee;
+            document.getElementById('edit-task-priority').value = priority;
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
         window.toggleTask = async function(id, completed) {
             const taskRef = doc(db, "tasks", id);
             await updateDoc(taskRef, { completed: completed });
-        }
-
-        window.editTask = async function(id, currentTitle, currentAssignee, currentPriority) {
-            const newTitle = prompt("ערוך את שם המשימה:", currentTitle);
-            if (newTitle === null) return; // בוטל
-
-            const newAssignee = prompt("בחר אחראי חדש (כפיר, מילר, שנינו):", currentAssignee);
-            if (!['כפיר', 'מילר', 'שנינו'].includes(newAssignee)) {
-                if (newAssignee !== null) alert("אחראי לא חוקי. יש לבחור: כפיר, מילר או שנינו.");
-                return;
-            }
-
-            const newPriority = prompt("בחר עדיפות חדשה (רגיל, דחוף):", currentPriority);
-            if (!['רגיל', 'דחוף'].includes(newPriority)) {
-                if (newPriority !== null) alert("עדיפות לא חוקית. יש לבחור: רגיל או דחוף.");
-                return;
-            }
-
-            try {
-                const taskRef = doc(db, "tasks", id);
-                await updateDoc(taskRef, {
-                    title: newTitle,
-                    assignee: newAssignee,
-                    priority: newPriority
-                });
-            } catch (error) {
-                console.error("שגיאה בעדכון משימה: ", error);
-                alert("אירעה שגיאה בעדכון המשימה.");
-            }
         }
 
         window.deleteTask = async function(id) {
